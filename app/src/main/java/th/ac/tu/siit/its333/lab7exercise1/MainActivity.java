@@ -22,7 +22,9 @@ import java.net.URL;
 
 
 public class MainActivity extends ActionBarActivity {
-
+    long lastClickTimeStamp;
+    String lastClickBtn = "";
+    boolean status;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -38,13 +40,40 @@ public class MainActivity extends ActionBarActivity {
 
     public void buttonClicked(View v) {
         int id = v.getId();
+        long current = System.currentTimeMillis();
         WeatherTask w = new WeatherTask();
         switch (id) {
             case R.id.btBangkok:
-                w.execute("http://ict.siit.tu.ac.th/~cholwich/bangkok.json", "Bangkok Weather");
+                if (!lastClickBtn.equals("bkk") || (current - lastClickTimeStamp > 60000)) {
+                    w.execute("http://ict.siit.tu.ac.th/~cholwich/bangkok.json", "Bangkok Weather");
+                    Log.d("tag", String.valueOf(current - lastClickTimeStamp));
+                    lastClickTimeStamp = current;
+                    lastClickBtn = "bkk";
+                }
+
                 break;
+
+            //Piyapan//
+            case R.id.btNon:
+                if (!lastClickBtn.equals("non") || current - lastClickTimeStamp > 60000) {
+                    w.execute("http://ict.siit.tu.ac.th/~cholwich/nonthaburi.json", "Nonthaburi Weather");
+                    lastClickTimeStamp = current;
+                    lastClickBtn = "non";
+                }
+
+                break;
+
+            case R.id.btPathum:
+                if (!lastClickBtn.equals("pathum") || current - lastClickTimeStamp > 60000) {
+                    w.execute("http://ict.siit.tu.ac.th/~cholwich/pathumthani.json", "Pathumthani Weather");
+                    lastClickTimeStamp = current;
+                    lastClickBtn = "pathum";
+                }
+                break;
+            }
         }
-    }
+
+
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -73,6 +102,11 @@ public class MainActivity extends ActionBarActivity {
         ProgressDialog pDialog;
         String title;
 
+        String Weather;
+        double temp;
+        double tempMin;
+        double tempMax;
+        int humid;
         double windSpeed;
 
         @Override
@@ -104,7 +138,16 @@ public class MainActivity extends ActionBarActivity {
                     //Start parsing JSON
                     JSONObject jWeather = new JSONObject(buffer.toString());
                     JSONObject jWind = jWeather.getJSONObject("wind");
+                    //Piyapan
                     windSpeed = jWind.getDouble("speed");
+                    Weather = jWeather.getJSONArray("weather").getJSONObject(0).getString("main");
+                    temp = jWeather.getJSONObject("main").getDouble("temp");
+                    tempMin = jWeather.getJSONObject("main").getDouble("temp_min");
+                    tempMax = jWeather.getJSONObject("main").getDouble("temp_max");
+                    temp = temp - 273.15;
+                    tempMin = tempMin - 273.15;
+                    tempMax = tempMax - 273.15;
+                    humid = jWeather.getJSONObject("main").getInt("humidity");
                     errorMsg = "";
                     return true;
                 }
@@ -126,7 +169,7 @@ public class MainActivity extends ActionBarActivity {
 
         @Override
         protected void onPostExecute(Boolean result) {
-            TextView tvTitle, tvWeather, tvWind;
+            TextView tvTitle, tvWeather, tvWind , tvTemp , tvHumid;
             if (pDialog.isShowing()) {
                 pDialog.dismiss();
             }
@@ -134,10 +177,15 @@ public class MainActivity extends ActionBarActivity {
             tvTitle = (TextView)findViewById(R.id.tvTitle);
             tvWeather = (TextView)findViewById(R.id.tvWeather);
             tvWind = (TextView)findViewById(R.id.tvWind);
+            tvTemp = (TextView)findViewById(R.id.tvTemp);
+            tvHumid = (TextView)findViewById(R.id.tvHumid);
 
             if (result) {
                 tvTitle.setText(title);
+                tvWeather.setText(Weather);
+                tvTemp.setText(String.format("%.2f",temp)+"(max = " + Double.toString(tempMax) +" ,min = " + Double.toString(tempMin) + ")");
                 tvWind.setText(String.format("%.1f", windSpeed));
+                tvHumid.setText(Integer.toString(humid));
             }
             else {
                 tvTitle.setText(errorMsg);
